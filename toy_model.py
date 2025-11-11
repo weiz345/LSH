@@ -1,3 +1,4 @@
+#toy_model.py
 import numpy as np
 
 class ToyModel:
