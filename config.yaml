@@ -1,0 +1,15 @@
+dataset:
+  name: olivetti          # or "mnist"
+
+model:
+  type: toy               # could later support "real_tf", "real_torch"
+  embedding_dim: 64
+
+embedding:
+  cache_path: cache/olivetti_embeddings.npy
+  use_cache: true
+
+similarity:
+  metric: cosine
+  k: 5
+  query_index: 0
