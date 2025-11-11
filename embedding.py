@@ -6,8 +6,4 @@ class Embedding:
         self.dataset = dataset
 
     def generate(self):
-        embeddings = []
-        for img in self.dataset:
-            emb = self.model(img)
-            embeddings.append(emb)
-        return np.array(embeddings)
+        return np.array([self.model(img) for img in self.dataset])
