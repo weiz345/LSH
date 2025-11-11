@@ -1,17 +1,27 @@
 # test_pipeline.py
 import numpy as np
+from dataset import Dataset
 from toy_model import ToyModel
 from embedding import Embedding
 from similarity import Similarity
 
 if __name__ == "__main__":
-    dataset = [np.random.rand(5, 5, 3) for _ in range(5)]
+    # 1️⃣ Load dataset (cached automatically)
+    dataset = Dataset(name="olivetti")
+    print("Loaded dataset")
 
-    model = ToyModel(embedding_dim=4)
-    embedder = Embedding(model, dataset, cache_path="toy_embeddings.npy")
-    embeddings = embedder.generate()
-    print("Embeddings:\n", embeddings)
+    # 2️⃣ Initialize model + embedding generator
+    model = ToyModel(embedding_dim=64)
+    embedder = Embedding(model, dataset, cache_path="cache/olivetti_embeddings.npy")
 
+    # 3️⃣ Generate or load embeddings
+    embeddings = embedder.generate(use_cache=True)
+    print("Embeddings shape:", embeddings.shape)
+
+    # 4️⃣ Compute similarity and query
     sim = Similarity(embeddings, metric="cosine")
-    top_k = sim.query(idx=0, k=2)
-    print("\nTop 2 most similar to index 0:", top_k)
+
+    idx = 0
+    k = 5
+    top_k = sim.query(idx=idx, k=k)
+    print(f"\nTop {k} most similar to index {idx}: {top_k}")

@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 class Dataset:
+    def __iter__(self):
+        return iter(self.images)
+
     def __init__(self, name="olivetti", cache_dir="cache"):
         os.makedirs(cache_dir, exist_ok=True)
         cache_path = os.path.join(cache_dir, f"{name}.npy")
