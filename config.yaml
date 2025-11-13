@@ -10,8 +10,9 @@ embedding:
   use_cache: true
 
 similarity:
-  source: raw              # "embedding" OR "raw"
-  backend: bruteforce      # "bruteforce", "lsh", "faiss", "hnsw" ...
+  source: embedding      # or raw
+  backend: bruteforce           # or bruteforce
   metric: cosine
   k: 5
   query_index: 0
+  mass_run: true         # <---- NEW

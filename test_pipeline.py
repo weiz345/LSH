@@ -10,7 +10,6 @@ from similarity import Similarity
 
 
 def load_model(cfg):
-    """Factory for model selection."""
     model_type = cfg["model"]["type"]
     if model_type == "toy":
         return ToyModel(cfg["model"]["embedding_dim"])
@@ -19,98 +18,109 @@ def load_model(cfg):
 
 
 def main(config_path="config.yaml"):
-    # ----------------------------------------------------
-    # 1️⃣ Load config
-    # ----------------------------------------------------
+    # 1. Load config
     with open(config_path, "r") as f:
         cfg = yaml.safe_load(f)
     print("Loaded config:", cfg)
 
-    # ----------------------------------------------------
-    # 2️⃣ Load dataset + images
-    # ----------------------------------------------------
-    dataset = Dataset(name=cfg["dataset"]["name"])
+    # 2. Load dataset
+    dataset = Dataset(cfg["dataset"]["name"])
     imgs = dataset.get()
     num_imgs = len(imgs)
 
-    # random sample for visualization
+    # Visual random samples
     rand_indices = np.random.choice(num_imgs, size=5, replace=False)
 
-    # ----------------------------------------------------
-    # 3️⃣ Select similarity source: "embedding" OR "raw"
-    # ----------------------------------------------------
+    # 3. Choose similarity source
     sim_source = cfg["similarity"].get("source", "embedding")
     backend = cfg["similarity"].get("backend", "bruteforce")
 
     if sim_source == "embedding":
         print("🔹 Using EMBEDDING similarity")
-
-        # model + embedding generator
         model = load_model(cfg)
-        embedder = Embedding(
-            model,
-            dataset,
-            cache_path=cfg["embedding"]["cache_path"]
-        )
-
+        embedder = Embedding(model, dataset, cache_path=cfg["embedding"]["cache_path"])
         vectors = embedder.generate(use_cache=cfg["embedding"]["use_cache"])
 
     elif sim_source == "raw":
-        print("🔹 Using RAW IMAGE similarity (flattened pixels)")
-
-        # flatten all images → vectors
+        print("🔹 Using RAW IMAGE similarity")
         flat = [img.flatten().astype("float32") for img in imgs]
         vectors = np.array(flat)
 
-        # normalize for cosine similarity
         if cfg["similarity"]["metric"] == "cosine":
             norms = np.linalg.norm(vectors, axis=1, keepdims=True) + 1e-9
             vectors = vectors / norms
-
     else:
         raise ValueError(f"Unknown similarity source: {sim_source}")
 
     print("Vectors shape:", vectors.shape)
 
-    # ----------------------------------------------------
-    # 4️⃣ Similarity search (backend: bruteforce, lsh, etc.)
-    # ----------------------------------------------------
+    # 4. Create similarity engine
     sim = Similarity(
         vectors,
         metric=cfg["similarity"]["metric"],
         backend=backend
     )
 
+    # --------------------------------------------------------------
+    # MASS RUN MODE: Run ALL queries (0 → N-1) and record metrics
+    # --------------------------------------------------------------
+    if cfg["similarity"].get("mass_run", False):
+        print("\n🚀 MASS RUN MODE ENABLED — Running all queries…")
+
+        times = []
+        peaks = []
+
+        # We wrap the profiler decorator to extract values
+        from profiling import capture_profile
+
+        for i in range(num_imgs):
+            top_k, t, mem = capture_profile(sim, i, cfg["similarity"]["k"])
+            times.append(t)
+            peaks.append(mem)
+
+        print("\n===== MASS RUN SUMMARY =====")
+        print(f"Queries run: {num_imgs}")
+        print(f"Backend     : {backend}")
+        print(f"Source      : {sim_source}")
+        print(f"Metric      : {cfg['similarity']['metric']}\n")
+
+        print(f"Avg time    : {np.mean(times)*1000:.3f} ms")
+        print(f"Min time    : {np.min(times)*1000:.3f} ms")
+        print(f"Max time    : {np.max(times)*1000:.3f} ms\n")
+
+        print(f"Avg memory  : {np.mean(peaks)/1024:.2f} KB")
+        print(f"Max memory  : {np.max(peaks)/1024:.2f} KB")
+        print("================================\n")
+
+        # Exit early — no visualization for mass mode
+        return
+
+    # --------------------------------------------------------------
+    # 5. Single Query + Visualization (normal mode)
+    # --------------------------------------------------------------
     idx = cfg["similarity"]["query_index"]
     k = cfg["similarity"]["k"]
 
     print(f"\nRunning similarity search → backend={backend}")
     top_k = sim.query(idx=idx, k=k)
+    print(f"\nTop {k} results for index {idx}: {top_k}")
 
-    print(f"\nTop {k} most similar to index {idx}: {top_k}")
-
-    # ----------------------------------------------------
-    # 5️⃣ Visualization: random → query → top-k neighbors
-    # ----------------------------------------------------
     total_cols = max(5, k + 1)
     total_rows = 2
 
     plt.figure(figsize=(3 * total_cols, 6))
 
-    # row 1 — random samples
     for i, r in enumerate(rand_indices):
         plt.subplot(total_rows, total_cols, i + 1)
         plt.imshow(imgs[r], cmap="gray")
         plt.title(f"Rand {r}")
         plt.axis("off")
 
-    # row 2 — query face
     plt.subplot(total_rows, total_cols, total_cols + 1)
     plt.imshow(imgs[idx], cmap="gray")
     plt.title("Query")
     plt.axis("off")
 
-    # row 2 — top-k neighbors
     for i, j in enumerate(top_k):
         plt.subplot(total_rows, total_cols, total_cols + 2 + i)
         plt.imshow(imgs[j], cmap="gray")
@@ -121,7 +131,6 @@ def main(config_path="config.yaml"):
     out_path = "results.png"
     plt.savefig(out_path)
     plt.close()
-
     print(f"\nSaved combined results → {out_path}")
 
 
