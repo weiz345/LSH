@@ -1,5 +1,5 @@
-#similarity.py
 import numpy as np
+from profiling import profile   # <-- NEW
 
 class Similarity:
     def __init__(self, embeddings, metric="cosine"):
@@ -11,8 +11,9 @@ class Similarity:
         return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-8)
 
     def _euclidean(self, a, b):
-        return -np.linalg.norm(a - b)  # negative so higher = more similar
+        return -np.linalg.norm(a - b)
 
+    @profile                      # <-- ADD THIS
     def query(self, idx, k=3):
         q = self.embeddings[idx]
         sims = []
@@ -24,5 +25,6 @@ class Similarity:
             else:
                 s = self._euclidean(q, emb)
             sims.append((i, s))
+
         sims.sort(key=lambda x: x[1], reverse=True)
         return [i for i, _ in sims[:k]]
