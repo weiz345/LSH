@@ -6,7 +6,7 @@ model:
   embedding_dim: 64
 
 embedding:
-  cache_path: cache/olivetti_embeddings.npy
+  cache_path: cache/facenet_embeddings.npy
   use_cache: true
 
 similarity:
