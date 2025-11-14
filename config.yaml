@@ -15,4 +15,10 @@ similarity:
   metric: cosine
   k: 5
   query_index: 0
-  mass_run: true         # <---- NEW
+
+  # ---- NEW FIELDS FOR EVALUATION ----
+  compare_to_bruteforce: true   # run Recall@k evaluation
+  eval_queries: 20              # number of random queries to test
+
+  # ---- MASS PERFORMANCE TESTING ----
+  mass_run: true                # test ALL queries for timing

@@ -28,7 +28,7 @@ def main(config_path="config.yaml"):
     imgs = dataset.get()
     num_imgs = len(imgs)
 
-    # Visual random samples
+    # Random images for visualization
     rand_indices = np.random.choice(num_imgs, size=5, replace=False)
 
     # 3. Choose similarity source
@@ -62,7 +62,23 @@ def main(config_path="config.yaml"):
     )
 
     # --------------------------------------------------------------
-    # MASS RUN MODE: Run ALL queries (0 → N-1) and record metrics
+    # OPTIONAL: Evaluate recall vs brute force
+    # --------------------------------------------------------------
+    if cfg["similarity"].get("compare_to_bruteforce", False):
+        print("\n🔍 Evaluating backend accuracy vs brute force…")
+
+        from similarity_eval import compare_to_bruteforce
+
+        recall = compare_to_bruteforce(
+            sim,
+            k=cfg["similarity"]["k"],
+            num_queries=cfg["similarity"].get("eval_queries", 20)
+        )
+
+        print(f"📊 Recall@{cfg['similarity']['k']} = {recall:.4f}\n")
+
+    # --------------------------------------------------------------
+    # MASS RUN MODE (benchmark all queries)
     # --------------------------------------------------------------
     if cfg["similarity"].get("mass_run", False):
         print("\n🚀 MASS RUN MODE ENABLED — Running all queries…")
@@ -70,7 +86,6 @@ def main(config_path="config.yaml"):
         times = []
         peaks = []
 
-        # We wrap the profiler decorator to extract values
         from profiling import capture_profile
 
         for i in range(num_imgs):
@@ -91,12 +106,10 @@ def main(config_path="config.yaml"):
         print(f"Avg memory  : {np.mean(peaks)/1024:.2f} KB")
         print(f"Max memory  : {np.max(peaks)/1024:.2f} KB")
         print("================================\n")
-
-        # Exit early — no visualization for mass mode
         return
 
     # --------------------------------------------------------------
-    # 5. Single Query + Visualization (normal mode)
+    # Normal mode: single query + visualization
     # --------------------------------------------------------------
     idx = cfg["similarity"]["query_index"]
     k = cfg["similarity"]["k"]
